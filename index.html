@@ -64,5 +64,24 @@ const tiredOptions={1:'',2:'Я осознаю, что от усталости т
 const $=id=>document.getElementById(id);
 function updatePoll(){['control','tired'].forEach(id=>{const el=$(id);el.style.setProperty('--progress',((Number(el.value)-1)/4*100)+'%')});const custom=$('customControl').checked;$('control').disabled=custom;$('controlScore').textContent=custom?'Свой вариант':$('control').value+' / 5';$('controlText').textContent=custom?'Напиши свой вариант ниже':controlOptions[$('control').value];$('controlComment').classList.toggle('hidden',!custom);$('tiredScore').textContent=$('tired').value+' / 5';$('tiredText').textContent=tiredOptions[$('tired').value]||'';}
 ['control','tired'].forEach(id=>{const slider=$(id);const activate=()=>slider.classList.add('touched');slider.addEventListener('pointerdown',activate);slider.addEventListener('keydown',e=>{if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Home','End','PageUp','PageDown'].includes(e.key))activate()});slider.addEventListener('input',()=>{activate();updatePoll()});slider.addEventListener('change',updatePoll)});$('customControl').addEventListener('input',updatePoll);$('customControl').addEventListener('change',updatePoll);updatePoll();
-$('poll').addEventListener('submit',e=>{e.preventDefault();$('status').textContent='Отправка пока не подключена. Для сохранения ответов нужно настроить хранилище.';});
+const SUPABASE_URL='https://rkmtlenxgmkqukiukbaa.supabase.co';
+const SUPABASE_KEY='sb_publishable_jB2YPxK-6NyENA-zTOY5bg_1thQr0rc';
+$('poll').addEventListener('submit',async e=>{
+ e.preventDefault();
+ const custom=$('customControl').checked;
+ const customAnswer=$('controlComment').value.trim();
+ const status=$('status');
+ if(custom&&!customAnswer){status.textContent='Пожалуйста, напиши свой вариант ответа.';$('controlComment').focus();return;}
+ const button=$('poll').querySelector('button[type="submit"]');
+ button.disabled=true;status.textContent='Отправляем ответы…';
+ const payload={question_1:custom?null:Number($('control').value),question_2:Number($('tired').value),custom_answer:custom?customAnswer:null,comment:$('tiredComment').value.trim()||null};
+ try{
+  const response=await fetch(SUPABASE_URL+'/rest/v1/answers',{
+   method:'POST',headers:{'apikey':SUPABASE_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify(payload)
+  });
+  if(!response.ok)throw new Error('HTTP '+response.status+': '+(await response.text()).slice(0,250));
+  status.textContent='Спасибо! Ответы отправлены.';
+  button.textContent='Ответы отправлены';
+ }catch(error){console.error('Не удалось отправить ответы:',error);status.textContent='Не удалось отправить ответы. Проверь подключение и попробуй ещё раз.';button.disabled=false;}
+});
 </script></body></html>
